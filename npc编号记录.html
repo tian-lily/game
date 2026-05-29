@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPC 编号分配</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f0; color: #222; padding: 24px 16px; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat { background: #fff; border-radius: 10px; padding: 14px; text-align: center; border: 1px solid #e5e5e5; }
+  .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .stat-num { font-size: 26px; font-weight: 600; color: #222; }
+  .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .input-row input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; }
+  .input-row input:focus { border-color: #4a7fe0; }
+  .input-row button { padding: 10px 20px; background: #4a7fe0; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  .input-row button:hover { background: #3a6fd0; }
+  .msg { font-size: 13px; min-height: 20px; margin-bottom: 12px; }
+  .msg.ok { color: #2a9d5c; }
+  .msg.err { color: #d94f4f; }
+  .section-title { font-size: 13px; color: #888; margin-bottom: 8px; margin-top: 16px; }
+  .used-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; margin-bottom: 8px; }
+  .tag { font-size: 13px; padding: 4px 10px; border-radius: 99px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; gap: 4px; }
+  .tag button { background: none; border: none; cursor: pointer; color: #1d4ed8; font-size: 15px; padding: 0; line-height: 1; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; }
+  .cell { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: 6px; border: 1px solid #e5e5e5; color: #888; background: #fff; cursor: pointer; }
+  .cell.used { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600; }
+  .cell:hover { background: #f0f0f0; }
+  .cell.used:hover { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+</style>
+</head>
+<body>
+<h1>NPC 编号分配（1–200）</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-label">总编号</div><div class="stat-num">200</div></div>
+  <div class="stat"><div class="stat-label">已分配</div><div class="stat-num" id="s-used">0</div></div>
+  <div class="stat"><div class="stat-label">剩余</div><div class="stat-num" id="s-left">200</div></div>
+</div>
+<div class="input-row">
+  <input type="number" id="inp" min="1" max="200" placeholder="输入编号 1–200，回车分配" />
+  <button onclick="assign()">分配</button>
+</div>
+<div class="msg" id="msg"></div>
+<div class="section-title">已分配编号（点击 × 取消）</div>
+<div class="used-list" id="tags"></div>
+<div class="section-title">全览（点格子快速分配/取消）</div>
+<div class="grid" id="grid"></div>
+
+<script>
+  const used = new Set();
+  const inp = document.getElementById('inp');
+  const msg = document.getElementById('msg');
+
+  function showMsg(text, type) {
+    msg.textContent = text;
+    msg.className = 'msg ' + type;
+    setTimeout(() => { msg.textContent = ''; msg.className = 'msg'; }, 2000);
+  }
+
+  function updateStats() {
+    document.getElementById('s-used').textContent = used.size;
+    document.getElementById('s-left').textContent = 200 - used.size;
+  }
+
+  function renderTags() {
+    const el = document.getElementById('tags');
+    el.innerHTML = '';
+    [...used].sort((a,b)=>a-b).forEach(n => {
+      const tag = document.createElement('div');
+      tag.className = 'tag';
+      tag.innerHTML = `${n} <button onclick="toggle(${n})">×</button>`;
+      el.appendChild(tag);
+    });
+  }
+
+  function renderGrid() {
+    const el = document.getElementById('grid');
+    el.innerHTML = '';
+    for (let i = 1; i <= 200; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (used.has(i) ? ' used' : '');
+      cell.textContent = i;
+      cell.title = used.has(i) ? `取消 #${i}` : `分配 #${i}`;
+      cell.onclick = () => toggle(i);
+      el.appendChild(cell);
+    }
+  }
+
+  function toggle(n) {
+    if (used.has(n)) { used.delete(n); showMsg(`已取消 #${n}`, 'err'); }
+    else { used.add(n); showMsg(`已分配 #${n}`, 'ok'); }
+    updateStats(); renderTags(); renderGrid();
+  }
+
+  function assign() {
+    const n = parseInt(inp.value);
+    if (!n || n < 1 || n > 200) { showMsg('请输入 1–200 的数字', 'err'); return; }
+    if (used.has(n)) { showMsg(`#${n} 已经分配过了`, 'err'); inp.value = ''; return; }
+    used.add(n); showMsg(`已分配 #${n}`, 'ok');
+    inp.value = '';
+    updateStats(); renderTags(); renderGrid();
+  }
+
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') assign(); });
+  renderGrid();
+</script>
+</body>
+</html>
